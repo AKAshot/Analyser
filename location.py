@@ -75,18 +75,26 @@ def get_page_data(html, link=None, params=None):
     data = {param: check(info, param) for param in params}
 
     extra_data = {
-        'price': price,
-        'address': address,
+        'Цена': price,
+        'Адресс': address,
 
-        'latitude': latitude,
-        'longitude': longitude,
+        'Широта': latitude,
+        'Долгота': longitude,
 
-        'link': link
+        'Ссылка': link
     }
 
     data |= extra_data
 
     return data
+
+
+# запись в json
+def write(data, filename):
+    data = json.dumps(data)
+    data = json.loads(str(data))
+    with open(filename, 'w', encoding='utf-8') as file:
+        json.dump(data, file, indent=4, ensure_ascii=False)
 
 
 def main():
@@ -99,9 +107,8 @@ def main():
               'Балкон или лоджия', 'Вид из окон', 'Дополнительно']
 
     if requests.get(URL + '1', headers=headers).status_code == 200:
-        # html = get_html(URL, headers)
-        # pages_count = get_pages_count(html)
-        pages_count = 2
+        html = get_html(URL, headers)
+        pages_count = get_pages_count(html)
         all_links = []
 
         for i in range(1, pages_count + 1):
@@ -114,7 +121,9 @@ def main():
             html = get_html(all_links[i], headers)
             data[i] = get_page_data(html, all_links[i], params)
 
-        print(data)
+        write(data, 'apartments.json')
+
+        print('successfully!!!')
         print(len(data))
 
     else:
