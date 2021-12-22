@@ -4,12 +4,14 @@ from bs4 import BeautifulSoup
 import json
 
 
+# берем html по url
 def get_html(url, headers=None) -> str:
     sleep(10)
     r = requests.get(url, headers=headers)
     return r.text
 
 
+# берем количество всех страниц раздела
 def get_pages_count(html) -> int:
     soup = BeautifulSoup(html, 'html.parser')
     pagination = soup.find_all('span', class_='pagination-item-JJq_j')  # строка пагинации
@@ -18,7 +20,8 @@ def get_pages_count(html) -> int:
     else:
         return 1  # или 1, тк нет строки пагинации == 1 страница
 
-
+    
+# переходим на каждую страницу пагинации и берем ссылки на все объявления, которые на ней
 def get_all_links(html):
     soup = BeautifulSoup(html, 'html.parser')
 
@@ -34,6 +37,8 @@ def get_all_links(html):
     return links
 
 
+# проверка на наличие конкретной информации (перечень параметров у объявлений разнится, он не фиксирован; так, например, не у каждого 
+#объявления есть информация о наличии балкона)
 def check(arr, sub):
     k = 'no info'
     for i in arr:
@@ -42,6 +47,7 @@ def check(arr, sub):
     return k
 
 
+# переходим по каждой ссылке на квартиру и передаем html страницы парсеру, берем нужную информацию и составляем словарь/объект квартиры
 def get_page_data(html, link=None, params=None):
     soup = BeautifulSoup(html, 'html.parser')
 
@@ -98,6 +104,7 @@ def write(data, filename):
 
 
 def main():
+    # задаем "константы"
     URL = 'https://www.avito.ru/sankt-peterburg/kvartiry/prodam-ASgBAgICAUSSA8YQ?cd=1&p='
     headers = {
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36 Edg/93.0.961.44',
@@ -105,22 +112,34 @@ def main():
     }
     params = ['Этаж', 'Количество комнат', 'Тип комнат', 'Общая площадь', 'Ремонт', 'Отделка', 'Санузел',
               'Балкон или лоджия', 'Вид из окон', 'Дополнительно']
-
+    # если мы попадаем на сервер (нас не заблокировали), то выполняем код
     if requests.get(URL + '1', headers=headers).status_code == 200:
+        # берем html главной (первой) страницы с объявлениями
         html = get_html(URL, headers)
+        # получаем количество страниц
         pages_count = get_pages_count(html)
+        # здесь будем хранить все ссылки на объявления
         all_links = []
-
+        
+        # итерируемся по всем страницам и берем ссылки с каждой из них
         for i in range(1, pages_count + 1):
             html = get_html(URL + 'i', headers)
-            all_links.extend(get_all_links(html))
-
-        data = {}
-
-        for i in range(pages_count):
+            try:
+                all_links.extend(get_all_links(html))
+            except:
+                pass
+        
+        # список словарей всех квартир
+        data = []
+        
+        # переходим по каждой ссылке из списка ссылок, составляем словарь объявления и вносим его в список словарей
+        for i in range(len(all_links)):
             html = get_html(all_links[i], headers)
-            data[i] = get_page_data(html, all_links[i], params)
-
+            data.append(get_page_data(html, all_links[i], params))
+        
+        sleep(30)
+        
+        # записываем данные в json-файл
         write(data, 'apartments.json')
 
         print('successfully!!!')
